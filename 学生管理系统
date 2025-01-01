@@ -1,0 +1,192 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+
+struct student {
+    char name[20];
+    char num[20];
+    int shiyan;
+    int qizhong;
+    int zong;
+};
+
+char filename[][20] = {
+    "1 班.txt", "2 班.txt", "3 班.txt", "4 班.txt", "5 班.txt",
+    "6 班.txt", "7 班.txt", "8 班.txt", "9 班.txt", "10 班.txt"
+};
+
+int duan[20][4] = { 0 };
+int grade[10][40] = { 0 };
+
+// 读取学生信息
+int ReadStudentInfo(const char* filename, struct student** pStudents) {
+    FILE* student;
+    errno_t err = fopen_s(&student, filename, "r");
+    if (err != 0 || student == NULL) {
+        printf("无法打开文件：%s\n", filename);
+        return -1;
+    }
+
+    int n = 0;
+    char str[200];
+    while (fgets(str, 200, student) != NULL) {
+        if (strlen(str) > 1) { // 忽略空行
+            n++;
+        }
+    }
+    fseek(student, 0, SEEK_SET);
+
+    *pStudents = (struct student*)malloc(sizeof(struct student) * n);
+    if (!*pStudents) {
+        fclose(student);
+        return -1;
+    }
+
+    for (int i = 0; i < n; i++) {
+        if (fscanf_s(student, "%s %s %d %d",
+            (*pStudents + i)->name, (unsigned)_countof((*pStudents + i)->name),
+            (*pStudents + i)->num, (unsigned)_countof((*pStudents + i)->num),
+            &(*pStudents + i)->shiyan, &(*pStudents + i)->qizhong) != 4) {
+            printf("文件内容格式错误，读取失败\n");
+            fclose(student);
+            free(*pStudents);
+            return -1;
+        }
+        (*pStudents + i)->zong = ((*pStudents + i)->shiyan + (*pStudents + i)->qizhong) / 2;
+    }
+    fclose(student);
+    return n;
+}
+
+// 数据规整
+void xingz(struct student* pStudents[], int num1[]) {
+    for (int i = 0; i < 10; i++) {
+        for (int j = 0; j < num1[i]; j++) {
+            int group = i; 
+            int z = j;    
+            if (group >= 0 && group < 10 && z >= 0 && z < 40) {
+                grade[group][z] = (*(pStudents + i) + j)->zong;
+            }
+        }
+    }
+}
+
+// 分数段统计
+void Zhengli(char filename[][20], const char* all, int n) {
+    FILE* grade1;
+    errno_t err = fopen_s(&grade1, all, "w");
+    if (err != 0 || grade1 == NULL) {
+        printf("无法打开文件：%s\n", all);
+        return;
+    }
+
+    struct student* pStudents[10] = { 0 };
+    int num[10] = { 0 };
+
+    for (int i = 0; i < 10; i++) {
+        num[i] = ReadStudentInfo(filename[i], &pStudents[i]);
+    }
+
+    xingz(pStudents, num);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < num[i]; j++) {
+            fprintf(grade1, "%d ", grade[i][j]);
+        }
+        fprintf(grade1, "\n");
+    }
+    fclose(grade1);
+
+    for (int i = 0; i < n; i++) {
+        for (int j = 0; j < num[i]; j++) {
+            if (grade[i][j] < 60) duan[i][0]++;
+            else if (grade[i][j] < 75) duan[i][1]++;
+            else if (grade[i][j] < 85) duan[i][2]++;
+            else duan[i][3]++;
+        }
+    }
+
+    printf("各分数段人数统计：\n");
+    for (int i = 0; i < n; i++) {
+        printf("班级 %d: ", i + 1);
+        for (int j = 0; j < 4; j++) {
+            printf("%6d ", duan[i][j]);
+        }
+        printf("\n");
+    }
+}
+
+// 显示班级成绩
+void DisplayClass(const char* filename, int classNum) {
+    struct student* Students;
+    int num = ReadStudentInfo(filename, &Students);
+    if (num <= 0) {
+        printf("读取班级 %d 的信息失败！\n", classNum);
+        return;
+    }
+    printf("教学班编号：%d 班\n", classNum);
+    printf("序号     姓名         学号         实验成绩       期中成绩  总成绩\n");
+    for (int i = 0; i < num; i++) {
+        printf("%4d %8s %18s %8d %8d %10d\n", i + 1, Students[i].name, Students[i].num,
+            Students[i].shiyan, Students[i].qizhong, Students[i].zong);
+    }
+    free(Students);
+}
+
+// 主函数
+int main() {
+    char ch;
+    while (1) {
+        printf("请输入数字选择对应功能：\n");
+        printf("1: 输出某个班级的成绩\n");
+        printf("2: 输出学院各班成绩\n");
+        printf("3: 输出各分数段人数分布\n");
+        printf("0: 退出\n");
+        scanf_s(" %c", &ch, 1);
+
+        if (ch == '0') break;
+
+        if (ch == '1') {
+            int ban;
+            printf("输入班级序号（1-10）：\n");
+            scanf_s("%d", &ban);
+            if (ban >= 1 && ban <= 10) {
+                DisplayClass(filename[ban - 1], ban);
+            }
+            else {
+                printf("请输入有效的班级序号！\n");
+            }
+        }
+        else if (ch == '2') {
+            struct student* Stus[10] = { 0 };
+            int numb[10] = { 0 };
+            float pj[10] = { 0 };
+
+            for (int i = 0; i < 10; i++) {
+                numb[i] = ReadStudentInfo(filename[i], &Stus[i]);
+            }
+            xingz(Stus, numb);
+
+            printf("学院成绩统计：\n");
+            printf("序号 行政班号 学生人数 平均成绩\n");
+            for (int i = 0; i < 10; i++) {
+                if (Stus[i] != NULL) {
+                    for (int j = 0; j < numb[i]; j++) {
+                        pj[i] += Stus[i][j].zong;
+                    }
+                    pj[i] /= numb[i];
+                    printf("%2d %7d 班 %7d %12.2f\n", i + 1, i + 1, numb[i], pj[i]);
+                    free(Stus[i]);
+                }
+            }
+        }
+        else if (ch == '3') {
+            Zhengli(filename, "all.txt", 10);
+        }
+        else {
+            printf("请输入有效的功能选项！\n");
+        }
+        while (getchar() != '\n'); // 清空缓冲区
+    }
+    return 0;
+}
