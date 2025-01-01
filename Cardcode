@@ -1,0 +1,99 @@
+#include <stdio.h>
+#include <time.h>
+#include <stdlib.h>
+#include <string.h>
+
+int card[2][5]; 
+int tong[15];   
+char hs[5][10] = { " ", "红桃", "方块", "黑桃", "梅花" }; // 花色数组
+char qk[8][15] = { "flush", "straight", "four", "full_house", "three", "two_pairs", "pair", "nothing" }; // 牌型结果
+
+// 生成扑克牌
+void newcard() {
+    srand(time(0));
+    for (int i = 0; i < 5;) {
+        int t = 0;
+        card[0][i] = rand() % 4 + 1; // 随机生成花色 (1-4)
+        card[1][i] = rand() % 13 + 1; // 随机生成点数 (1-13)
+
+        // 检查是否重复
+        for (int j = 0; j < i; j++) {
+            if (card[0][i] == card[0][j] && card[1][i] == card[1][j]) {
+                t = 1; // 找到重复，退出检查
+                break;
+            }
+        }
+
+        
+        if (t == 0) i++;
+    }
+}
+
+// 分析牌型
+char* analyse() {
+    memset(tong, 0, sizeof(tong)); // 初始化点数统计数组
+
+    // 统计每个点数的出现次数
+    for (int i = 0; i < 5; i++) {
+        tong[card[1][i]]++;
+        if (card[1][i] == 1) tong[14]++; // A 既是 1 也是 14
+    }
+
+    // 判断是否为同花
+    int huase = 1;
+    for (int i = 1; i < 5; i++) {
+        if (card[0][i] == card[0][i - 1]) huase++;
+    }
+
+    // 判断是否为顺子
+    for (int i = 1; i <= 10; i++) {
+        int is_straight = 1;
+        for (int j = i; j < i + 5; j++) {
+            if (tong[j] == 0) {
+                is_straight = 0;
+                break;
+            }
+        }
+        if (is_straight) {
+            if (huase == 5) return qk[0]; // 同花顺
+            return qk[1]; // 顺子
+        }
+    }
+
+    // 判断其余牌型
+    int tt = 0, ttt = 0;
+    for (int i = 1; i <= 13; i++) {
+        if (tong[i] == 4) return qk[2]; // 四条
+        if (tong[i] == 3) ttt = 1; // 三条
+        if (tong[i] == 2) tt++;   // 一对或两对
+    }
+    if (ttt && tt) return qk[3]; // 葫芦
+    if (ttt) return qk[4];       // 三条
+    if (tt == 2) return qk[5];   // 两对
+    if (tt == 1) return qk[6];   // 一对
+    return qk[7];                // 什么也不是
+}
+
+
+int main() {
+    int a = 0;
+    printf("请输入 1 生成新牌\n");
+    scanf_s("%d", &a);
+
+    while (a == 1) {
+        newcard(); // 生成新牌
+        printf("This is %s\n", analyse()); // 分析牌型并输出结果
+
+        // 输出生成的扑克牌
+        for (int i = 0; i < 5; i++) {
+            printf("%s %d\n", hs[card[0][i]], card[1][i]);
+        }
+
+        // 用户继续输入
+        printf("继续请输入 1\n");
+        scanf_s("%d", &a);
+    }
+
+    printf("程序结束。\n");
+    return 0;
+}
